@@ -23,9 +23,6 @@ import scopt.OptionParser
 
 import scala.collection.mutable.ArrayBuffer
 
-/**
-  * Created by Fei Hu on 8/7/17.
-  */
 object LeNet_MNIST {
   def load(featureFile: String, labelFile: String): Array[ByteRecord] = {
 
