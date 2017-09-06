@@ -78,7 +78,7 @@ object LeNet_MNIST {
     Engine.init
 
     val classNum = 10
-    val batchSize = 4
+    val batchSize = 6*12
     val maxEpoch = 1
 
     val trainMean = 0.13066047740239506
@@ -87,25 +87,24 @@ object LeNet_MNIST {
     val testMean = 0.13251460696903547
     val testStd = 0.31048024
 
-    val filePrefix = "/Users/fei.hu1@ibm.com/Documents/GitHub/bigdl_learn/src/main/resources/MNIST/"
+    val filePrefix = "hdfs:///user/fei/mnist/" ///home/fei/BigDL/mnist_data/" //"/Users/fei.hu1@ibm.com/Documents/GitHub/bigdl_learn/src/main/resources/MNIST/"
     val trainData = filePrefix + "train-images-idx3-ubyte"
     val trainLabel = filePrefix + "train-labels-idx1-ubyte"
     val validationData = filePrefix + "t10k-images-idx3-ubyte"
     val validationLabel = filePrefix + "t10k-labels-idx1-ubyte"
 
-    val model = Sequential()
-    model.add(Reshape(Array(1, 28, 28)))
-        .add(SpatialConvolution(1, 6, 5, 5))
-        .add(Tanh())
-        .add(SpatialMaxPooling(2, 2, 2, 2))
-        .add(Tanh())
-        .add(SpatialConvolution(6, 12, 5, 5))
-        .add(SpatialMaxPooling(2, 2, 2, 2))
-        .add(Reshape(Array(12 * 4 * 4)))
-        .add(Linear(12 * 4 * 4, 100))
-        .add(Tanh())
-        .add(Linear(100, classNum))
-        .add(LogSoftMax())
+    val model = Sequential().add(Reshape(Array(1, 28, 28)))
+                            .add(SpatialConvolution(1, 6, 5, 5))
+                            .add(Tanh())
+                            .add(SpatialMaxPooling(2, 2, 2, 2))
+                            .add(Tanh())
+                            .add(SpatialConvolution(6, 12, 5, 5))
+                            .add(SpatialMaxPooling(2, 2, 2, 2))
+                            .add(Reshape(Array(12 * 4 * 4)))
+                            .add(Linear(12 * 4 * 4, 100))
+                            .add(Tanh())
+                            .add(Linear(100, classNum))
+                            .add(LogSoftMax())
 
     val trainSet = DataSet.array(load(trainData, trainLabel), sc) -> BytesToGreyImg(28, 28) -> GreyImgNormalizer(trainMean, trainStd) -> GreyImgToBatch(batchSize)
     val validationSet = DataSet.array(load(validationData, validationLabel), sc) -> BytesToGreyImg(28, 28) -> GreyImgNormalizer(testMean, testStd) -> GreyImgToBatch(batchSize)
@@ -115,22 +114,15 @@ object LeNet_MNIST {
       dataset = trainSet,
       criterion = ClassNLLCriterion[Float]())
 
-    optimizer
-      .setValidation(
-        trigger = Trigger.everyEpoch,
-        dataset = validationSet,
-        vMethods = Array(new Top1Accuracy))
+    optimizer.setValidation(trigger = Trigger.everyEpoch, dataset = validationSet, vMethods = Array(new Top1Accuracy))
       .setOptimMethod(new Adagrad(learningRate=0.01, learningRateDecay=0.0002))
-      .setEndWhen(Trigger.maxEpoch(maxEpoch))
-      .optimize()
+      .setEndWhen(Trigger.maxEpoch(maxEpoch)).optimize()
 
     model.saveWeights("./LeNet", true)
 
     val rawData = load(validationData, validationLabel)
     val iter = rawData.iterator
-    val sampleIter = GreyImgToSample()(
-      GreyImgNormalizer(trainMean, trainStd)(
-        BytesToGreyImg(28, 28)(iter)))
+    val sampleIter = GreyImgToSample()(GreyImgNormalizer(trainMean, trainStd)(BytesToGreyImg(28, 28)(iter)))
 
     var samplesBuffer = ArrayBuffer[Sample[Float]]()
 
@@ -144,7 +136,6 @@ object LeNet_MNIST {
     val result = localModel.predict(samples)
     val result_class = localModel.predictClass(samples)
     result_class.foreach(r => println(s"${r}"))
-
   }
 
 }
